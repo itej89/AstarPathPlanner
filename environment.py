@@ -1,3 +1,4 @@
+import math
 import numpy as np
 import cv2 as cv
 
@@ -16,7 +17,7 @@ class environment:
         vertices_inflated = [tuple(x) for x in vertices_inflated[0]]
         return vertices_inflated
 
-    def __init__(self, height, width, inflation_radius) -> None:
+    def __init__(self, height, width, inflation_radius, step_size, robot_wheel_radius, wheel_base_width) -> None:
         """Initialize environment parameters
 
         Args:
@@ -26,6 +27,12 @@ class environment:
         self.height = height
         self.width = width
         self.inflation_radius = inflation_radius
+
+        self.step_size = step_size
+        self.robot_wheel_radius = robot_wheel_radius
+        self.wheel_base_width = wheel_base_width
+
+
         #create a map fo given dimentions. 3 channels for opencv BGR
         self.map = np.ones((height, width, 3))
 
@@ -122,17 +129,51 @@ class environment:
         self.map[i, j] = [255, 255, 255]
         self.refresh_map()
 
-    def update_action(self, start, end):
-        """Update map with explored nodes colour
+    # def update_action(self, start, end):
+    #     """Update map with explored nodes colour
 
-        Args:
-            explored_node (tuple): state that has been visited
-        """
-        x1, y1, theta1 = start
-        x2, y2, theta2 = end
-        self.map = cv.arrowedLine(self.map, (y1, x1), (y2, x2),[0, 255, 255], 1, cv.LINE_AA)
-        self.refresh_map()
+    #     Args:
+    #         explored_node (tuple): state that has been visited
+    #     """
+    #     x1, y1, theta1 = start
+    #     x2, y2, theta2 = end
+    #     self.map = cv.arrowedLine(self.map, (y1, x1), (y2, x2),[0, 255, 255], 1, cv.LINE_AA)
+    #     self.refresh_map()
 
+    def update_action(self, pose, action, validity_checker):
+        Xi,Yi,Thetai = pose
+        UL, UR = action
+        t = 0
+        # r = 0.038
+        # L = 0.354
+        r = self.robot_wheel_radius
+        L = self.wheel_base_width
+        dt = 0.1
+        Xn=Xi
+        Yn=Yi
+        Thetan = 3.14 * Thetai / 180
+        # Xi, Yi,Thetai: Input point's coordinates
+        # Xs, Ys: Start point coordinates for plot function
+        # Xn, Yn, Thetan: End point coordintes
+        cost_to_go=0
+        while t<self.step_size:
+            t = t + dt
+            Delta_Xn = 0.5*r * (UL + UR) * math.cos(Thetan) * dt
+            Delta_Yn = 0.5*r * (UL + UR) * math.sin(Thetan) * dt
+            Xn += Delta_Xn
+            Yn += Delta_Yn
+            Thetan += (r / L) * (UR - UL) * dt
+            cost_to_go=cost_to_go+ math.sqrt(math.pow((0.5*r * (UL + UR) * math.cos(Thetan) *
+            dt),2)+math.pow((0.5*r * (UL + UR) * math.sin(Thetan) * dt),2))
+
+            if validity_checker((round(Xn), round(Yn), Thetan)):
+                if self.map[round(Xn), round(Yn)][0] == 0 and self.map[round(Xn), round(Yn)][1] == 255 \
+                  and self.map[round(Xn), round(Yn)][2] == 0:
+                    continue
+                self.map[round(Xn), round(Yn)] = [0, 255, 0]
+            else:
+                 break
+            
 
     def save_image(self, file_path):
         """saves current state of the environment in the file location as image 

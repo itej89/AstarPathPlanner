@@ -28,6 +28,9 @@ class node:
 
         #Contains total-cost to the goal
         self.Total_Cost = self.Cost_to_Come + self.Cost_to_Go
+        
+        #Contains the action taken to reach this node
+        self.Action_to_Node = None
 
     #Funciton to help heapq for comparing two node objects
     def __lt__(self, other):

@@ -6,7 +6,7 @@ class action_handler:
 #Class to handle the action supported by the environment
 
 
-    def __init__(self, env, step_size, start_pose, goal_pose) -> None:
+    def __init__(self, env, step_size, start_pose, goal_pose, rpm1, rpm2, wheel_radius, wheel_base_width) -> None:
         """Initilaize action handler parameters
         Args:
             env (environment): referance ot environment
@@ -15,27 +15,50 @@ class action_handler:
         self.start_pose = start_pose
         self.goal_pose = goal_pose
         self.step_size = step_size
+        self.robot_wheel_radius = wheel_radius
+        self.wheel_base_width = wheel_base_width
 
         #define al the actions possible in the environment
-        self.Actions = {-60, -30, 0, 30, 60}
+        self.Actions = [(0, rpm1), (rpm1,0), (rpm1, rpm1), (0, rpm2), (rpm2, 0), (rpm2,rpm2), (rpm1, rpm2), (rpm2, rpm1)]
 
-    
-    def ActionValues(self, action,  pose):
-        x, y, theta = pose
 
-        theta_new = (theta + action) % 360
-        theta_new_rad = (theta_new)*math.pi/180
-
-        x_new = x + self.step_size * math.cos( theta_new_rad )
-        y_new = y + self.step_size * math.sin( theta_new_rad )
-
-        return (round(x_new), round(y_new), theta_new) 
-    
     def cost_norm(self, pose1, pose2):
-        x1, y1, theta1 = pose1
-        x2, y2, theta2 = pose2
+        x1, y1, _ = pose1
+        x2, y2, _ = pose2
         return np.linalg.norm([x1 - x2, y1 - y2])
 
+    def ActionValues(self, pose, action):
+        Xi,Yi,Thetai = pose
+        UL, UR = action
+
+        t = 0
+        dt = 0.1
+
+        Xn=Xi
+        Yn=Yi
+        Thetan = 3.14 * Thetai / 180
+
+        cost_to_go=0
+        while t<self.step_size:
+            t = t + dt
+
+            Delta_Xn = 0.5*self.robot_wheel_radius * (UL + UR) * math.cos(Thetan) * dt
+            Delta_Yn = 0.5*self.robot_wheel_radius * (UL + UR) * math.sin(Thetan) * dt
+
+            Thetan += (self.robot_wheel_radius / self.wheel_base_width) * (UR - UL) * dt
+
+            cost_to_go=cost_to_go+ math.sqrt(math.pow((0.5*self.robot_wheel_radius * (UL + UR) * math.cos(Thetan) *
+            dt),2)+math.pow((0.5*self.robot_wheel_radius * (UL + UR) * math.sin(Thetan) * dt),2))
+
+            Xn += Delta_Xn
+            Yn += Delta_Yn
+
+            if not self.env.is_valid_position((round(Xn), round(Yn), Thetan)):
+                return None, None
+
+        Thetan = 180 * (Thetan) / 3.14
+        return (round(Xn), round(Yn), Thetan), cost_to_go
+    
     def PerformAction(self, parent_node, action):
         """Compute the next state and estimate the total cost for the next state
 
@@ -49,18 +72,19 @@ class action_handler:
 
         agents_pose = parent_node.Node_State
 
-        #Simulate agents nect position
-        simulated_position = self.ActionValues(action, agents_pose)
+        #Simulate agents next position
+        simulated_position, action_cost = self.ActionValues(agents_pose, action)
         
-        #Compute the total cost of the action
-        action_cost_to_come = parent_node.Cost_to_Come + self.cost_norm(agents_pose, simulated_position)
+        if simulated_position is not None:
 
-        action_cost_to_go =  self.cost_norm(simulated_position, self.goal_pose)#+abs(agents_pose[2] - simulated_position[2])
+            #Compute the total cost of the action
+            action_cost_to_come = parent_node.Cost_to_Come + action_cost
 
-        #Check if the computed position os valid
-        if not self.env.is_valid_position(simulated_position):
-                return False, None
-        
-        #return the estimated position and cost
-        return True, (simulated_position, action_cost_to_come, action_cost_to_go)
+            action_cost_to_go =  self.cost_norm(simulated_position, self.goal_pose)#+abs(agents_pose[2] - simulated_position[2])
 
+            #return the estimated position and cost
+            return True, (simulated_position, action_cost_to_come, action_cost_to_go)
+
+        else:
+            return False, None
+            

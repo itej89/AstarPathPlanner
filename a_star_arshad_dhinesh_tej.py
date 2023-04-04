@@ -95,7 +95,6 @@ class astar_planner:
             if Status:
                 
                 simulated_position , Total_Cost_To_Come, Total_Cost_To_Go = Sim_Pose
-
                 #else of the state has already been explored then ignore the action
                 status, idx = self.visited_node_check(simulated_position, node_manager.node_x[self.visited_node_list], \
                                             node_manager.node_y[self.visited_node_list], node_manager.node_theta[self.visited_node_list], self.robot_radius)
@@ -110,6 +109,7 @@ class astar_planner:
                     NewNode = node_manager.make_node(simulated_position, Total_Cost_To_Come, Total_Cost_To_Go)
                     #Update the parent for the node
                     NewNode.Parent_Node_hash = parent_node.Node_hash
+                    NewNode.Action_to_Node = action
                     heapq.heappush(self.pending_state_que, NewNode)
                     self.node_arrow_list[parent_node.Node_hash].append(NewNode.Node_hash)
                 
@@ -128,6 +128,7 @@ class astar_planner:
                         node_manager.global_node_directory[idx].Node_State = simulated_position
 
                         NewNode = node_manager.global_node_directory[idx]
+                        NewNode.Action_to_Node = action
                         heapq.heapify(self.pending_state_que)
 
                 #Push new node to the pending que for future expoloration
@@ -136,7 +137,7 @@ class astar_planner:
                 #     heapq.heappush(self.pending_state_que, NewNode)
 
     
-    def find_goal_node(self, start_state, goal_state, robot_radius, goal_dist_threshold) -> bool:
+    def find_goal_node(self, start_state, goal_state, robot_radius, goal_dist_threshold, display_env) -> bool:
         """Takes start stat and goal state for the environement 
         and computes the tree using _Breadth first search algorithm till the goal state is reached 
 
@@ -154,6 +155,7 @@ class astar_planner:
         self.initial_state = start_state
         self.goal_dist_threshold = goal_dist_threshold
         self.Final_Node = None
+        self.rendered_nodes = 0
 
         #Initialize search que. This stores the nodes that needs to be explored
         start_node = node_manager.make_node(self.initial_state)
@@ -165,7 +167,15 @@ class astar_planner:
 
         #Perform search till a goal state is reached or maximum number of iterations reached
         
+        render_freq = 100
+        render_freq_counter  = 0
         while True:
+            render_freq_counter += 1
+            if render_freq_counter % render_freq == 0:
+                self.visualize_exploration(display_env, self.robot_radius, self.rendered_nodes)
+                self.rendered_nodes =  len(self.visited_node_list)
+
+
             if len(self.pending_state_que) > 0:
                 #fetch next node to be explored
                 next_item = heapq.heappop(self.pending_state_que)
@@ -200,9 +210,9 @@ class astar_planner:
             #back track untill the start node has been reached
             while True:
                 last_node = node_manager.global_node_directory[last_node.Parent_Node_hash]
-                if last_node.Parent_Node_hash != None:
-                    trajectory.append(last_node.Node_State)
-                else:
+                trajectory.append(last_node.Node_State)
+
+                if last_node.Parent_Node_hash == None:
                     break
 
             trajectory.reverse()
@@ -210,7 +220,7 @@ class astar_planner:
         
         return None
     
-    def visualize_exploration(self, display_environment, robot_radius):
+    def visualize_exploration(self, display_environment, robot_radius, render_node_start_index = 0):
         """Visualize exploration of the nodes
         """
         #indicate start and goal nodes with circles5
@@ -222,10 +232,13 @@ class astar_planner:
         #variable to control gui update rate
         update_count = 0
         # Loop through all visited nodes and show on the cv window
-        for start in self.node_arrow_list:
-            for end in self.node_arrow_list[start]:
-                display_environment.update_action(node_manager.global_node_directory[start].Node_State, \
-                                       node_manager.global_node_directory[end].Node_State)
+        for idx in self.visited_node_list[render_node_start_index:]:
+            if node_manager.global_node_directory[idx].Parent_Node_hash != None:
+                parent_idx = node_manager.global_node_directory[idx].Parent_Node_hash
+                pose = (node_manager.node_x[parent_idx], node_manager.node_y[parent_idx], \
+                        node_manager.node_theta[parent_idx])
+                display_environment.update_action(pose, \
+                                        node_manager.global_node_directory[idx].Action_to_Node, self.env.is_valid_position)
                 
                 update_count +=1
                 #Update gui every 300 iteration
@@ -275,37 +288,65 @@ class astar_planner:
 
 if __name__ == "__main__":
 
-  
-    print("Enter obstacle inflation size : ") 
-    obstacle_inflation = int(input())
-    print("Enter robot radius  : ") 
-    robot_radius = int(input())
-    goal_dist_threshold = 1.5 * robot_radius
+    #Static parameters--------------------------
+    rpm1 = 50
+    rpm2 = 100
+    wheel_radius = 3.3
+    robot_radius = 10.5
+    wheel_base_width = 16.0
+    #-------------------------------------------
+
+    obstacle_inflation = 5
+    # goal_dist_threshold = 1.5 * robot_radius
+    goal_dist_threshold = 30
+
+    #the amount of time the robot moves per action
+    step_size = 1
+
+    start_state = (30, 30, 30)
+    goal_state = (230, 419, 30)
+
+
+    robot_radius = round(robot_radius)
+    if robot_radius < 1:
+        robot_radius = 1
+
+
+    # print("Enter obstacle inflation size : ") 
+    # obstacle_inflation = int(input())
+    # print("Enter robot radius  : ") 
+    # robot_radius = int(input())
+    # goal_dist_threshold = 1.5 * robot_radius
+
     
-    print("Note: Enter step  greater than 0.5 * robot radius")
-    print(f"Enter robot's action step size: [{ceil(0.5 * robot_radius)} - 10]")
-    step_size = int(input())
+    # print("Note: Enter step  greater than 0.5 * robot radius")
+    # print(f"Enter robot's action step size: [{ceil(0.5 * robot_radius)} - 10]")
+    # step_size = int(input())
      
-    while step_size < 1 or step_size > 10: #check if the start node is outside the map
-        print("\nAction step size out of range [1-10]. Re-Enter the action Step size: ")
-        step_size = int(input())
+    # while step_size < 1 or step_size > 10: #check if the start node is outside the map
+    #     print("\nAction step size out of range [1-10]. Re-Enter the action Step size: ")
+    #     step_size = int(input())
 
     #Create environment
     print("Please wait while creating the environment.")
     #Crate environment for showing the final visualization--------------------------
     #This does not show the additional inflation for robot radius. Insted, it will inflate the robot size
-    display_environment = environment(250, 600, obstacle_inflation)
+    display_environment = environment(250, 600, obstacle_inflation, step_size, wheel_radius, wheel_base_width)
     display_environment.create_map()
     #-------------------------------------------------------------------------------
 
-    _environment = environment(250, 600, robot_radius+obstacle_inflation)
+
+    # clearance_robot_radius = round(robot_radius)
+    # if clearance_robot_radius < 1:
+    #     clearance_robot_radius = 1
+    _environment = environment(250, 600, robot_radius+obstacle_inflation, step_size, wheel_radius, wheel_base_width)
     _environment.create_map()
     print("Environment created successfully.")
 
-        # #Getting start node from the user:
-    print("\nEnter Start Node as integers: x,y,theta") 
-    start_y, start_x, start_theta = input().replace(" ", "").split(',')
-    start_state = (int(start_x.strip()), int(start_y.strip()), int(start_theta.strip()))
+    #     # #Getting start node from the user:
+    # print("\nEnter Start Node as integers: x,y,theta") 
+    # start_y, start_x, start_theta = input().replace(" ", "").split(',')
+    # start_state = (int(start_x.strip()), int(start_y.strip()), int(start_theta.strip()))
 
     
     while(not _environment.is_valid_position(start_state)) or start_state[2] % 30 != 0: #check if the start node is outside the map
@@ -314,10 +355,10 @@ if __name__ == "__main__":
         start_state = (int(start_x.strip()), int(start_y.strip()), int(start_theta.strip()))
     
     
-    # Getting goal node from the user:
-    print("Enter Goal Node as integers: x,y,theta")
-    goal_y, goal_x, goal_theta = input().replace(" ", "").split(',')
-    goal_state = (int(goal_x.strip()), int(goal_y.strip()), int(goal_theta.strip()))
+    # # Getting goal node from the user:
+    # print("Enter Goal Node as integers: x,y,theta")
+    # goal_y, goal_x, goal_theta = input().replace(" ", "").split(',')
+    # goal_state = (int(goal_x.strip()), int(goal_y.strip()), int(goal_theta.strip()))
 
     while(not _environment.is_valid_position(goal_state)) or goal_state[2] % 30 != 0: #check if the goal node is outside the map
         print("\nGoal Node is out of the Map or theta is not a multiple of 30 Re-Enter the Goal node: ")
@@ -327,7 +368,7 @@ if __name__ == "__main__":
     
 
     #Create action handler for the environment
-    _actionHandler = action_handler(_environment, step_size, start_state, goal_state)
+    _actionHandler = action_handler(_environment, step_size, start_state, goal_state, rpm1, rpm2, wheel_radius, wheel_base_width)
 
     #create planner
     _astar_planner = astar_planner(_environment, _actionHandler)
@@ -337,7 +378,7 @@ if __name__ == "__main__":
     print(f"Start Position : {[start_state[1], start_state[0]]}, Goal Postion : {[goal_state[1], goal_state[0]]}")
     print("Please wait while searching for the goal state...")
     start_time = time.time()
-    _status =  _astar_planner.find_goal_node(start_state, goal_state, robot_radius, goal_dist_threshold)
+    _status =  _astar_planner.find_goal_node(start_state, goal_state, robot_radius, goal_dist_threshold, display_environment)
     elspsed_time = time.time() - start_time
 
     print(f"Total time taken to run the algorithm : {elspsed_time} seconds\n")
