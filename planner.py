@@ -46,12 +46,13 @@ class planner:
         print(f"Total time taken to run the algorithm : {elspsed_time} seconds\n")
         
         #If Planner is successfull, visualize the plan
-        if _status:
-            trajectory = self._astar_planner.back_track()
-            trjactions = self._astar_planner.back_track_actions()
-            return trajectory, trjactions
-        else:
-            return None, None
+        return _status
+        
+    def get_trajectory(self):
+          return self._astar_planner.back_track()
+    
+    def get_action_set(self):
+          return self._astar_planner.back_track_actions()
     
     def view_plan(self, start_state, goal_state, trajectory):
         if trajectory != None:
@@ -75,8 +76,6 @@ if __name__ == "__main__":
     goal_state = (100, 500, 30)
 
     _planner = planner()
-    trajectory, trjactions = _planner.plan(rpm1, rpm2, start_state, goal_state)
-    _planner.view_plan(start_state, goal_state, trajectory)
-
-    print(trjactions)
-    print(trajectory)
+    if _planner.plan(rpm1, rpm2, start_state, goal_state):
+        _planner.view_plan(start_state, goal_state, _planner.get_trajectory())
+        print(_planner.get_action_set())

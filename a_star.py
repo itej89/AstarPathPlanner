@@ -204,19 +204,28 @@ class astar_planner:
             list of tuples: list of trajectory points
         """
         if self.Final_Node != None:
+            ul = []
+            ur = []
+            theta = []
+
             last_node = self.Final_Node
-            actions = [last_node.Action_to_Node]
+            ul.append(last_node.Action_to_Node[0])
+            ur.append(last_node.Action_to_Node[1])
+            theta.append(last_node.Node_State[2])
 
             #back track untill the start node has been reached
             while True:
                 last_node = node_manager.global_node_directory[last_node.Parent_Node_hash]
-                actions.append(last_node.Action_to_Node)
+                if last_node.Action_to_Node != None:
+                    ul.append(last_node.Action_to_Node[0])
+                    ur.append(last_node.Action_to_Node[1])
+                    theta.append(last_node.Node_State[2])
 
                 if last_node.Parent_Node_hash == None:
                     break
 
-            actions.reverse()
-            return actions
+            ul.reverse(); ur.reverse(); theta.reverse()
+            return ul, ur, theta
         
         return None
 
