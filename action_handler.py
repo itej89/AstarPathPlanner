@@ -38,6 +38,7 @@ class action_handler:
         Yn=Yi
         Thetan = 3.14 * Thetai / 180
 
+
         cost_to_go=0
         while t<self.step_size:
             t = t + dt
@@ -57,7 +58,7 @@ class action_handler:
                 return None, None
 
         Thetan = 180 * (Thetan) / 3.14
-        return (round(Xn), round(Yn), Thetan), cost_to_go
+        return (round(Xn), round(Yn), Thetan%360), cost_to_go
     
     def PerformAction(self, parent_node, action):
         """Compute the next state and estimate the total cost for the next state

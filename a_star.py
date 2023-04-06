@@ -44,21 +44,21 @@ class astar_planner:
         theta_threshold_min = node[2] - 10 #theta threshold min = node's theta -30
         theta_threshold_max = node[2] + 10 #theta threshold max = node's theta +30
 
-        if _x.size > 0:
-            thetas = list_theta[_x.ravel()]
+        # if _x.size > 0:
+        #     thetas = list_theta[_x.ravel()]
 
-            range_thetas = np.where(np.logical_and(thetas>=theta_threshold_min, thetas<=theta_threshold_max))
+        #     range_thetas = np.where(np.logical_and(thetas>=theta_threshold_min, thetas<=theta_threshold_max))
             
-            _len = len(range_thetas[0])
-            if _len > 0:
-                return True, _x[range_thetas[0][0]]
+        #     _len = len(range_thetas[0])
+        #     if _len > 0:
+        #         return True, _x[range_thetas[0][0]]
 
         if len(_x) > 0: #if there are elements in dist_matrix that are less than 0.5
-            for i in _x: #loop through all elements in dist_matrix that are less than 0.5
-                if list_theta[i] > theta_threshold_min and list_theta[i] < theta_threshold_max: #if theta of node in list is within theta threshold
-                    return True, i #Then node is in the given list
-            # return True, _x[0][0]
-            return False, None #Else node is not in the given list
+            # for i in _x: #loop through all elements in dist_matrix that are less than 0.5
+                # if list_theta[i] > theta_threshold_min and list_theta[i] < theta_threshold_max: #if theta of node in list is within theta threshold
+                #     return True, i #Then node is in the given list
+            return True, _x[0]
+            # return False, None #Else node is not in the given list
         else:
              return False, None #Else node is not in the given list
         
@@ -172,7 +172,7 @@ class astar_planner:
         while True:
             render_freq_counter += 1
             if render_freq_counter % render_freq == 0:
-                self.visualize_exploration(display_env, self.robot_radius, self.rendered_nodes)
+                self.visualize_exploration(start_state, goal_state, display_env, self.robot_radius, self.rendered_nodes)
                 self.rendered_nodes =  len(self.visited_node_list)
 
 
@@ -196,6 +196,29 @@ class astar_planner:
             else:
                 print("Unable to find the goal state!!!")
                 return False
+            
+    def back_track_actions(self):
+        """Funciton to find the final trajectory given the final goal node
+
+        Returns:
+            list of tuples: list of trajectory points
+        """
+        if self.Final_Node != None:
+            last_node = self.Final_Node
+            actions = [last_node.Action_to_Node]
+
+            #back track untill the start node has been reached
+            while True:
+                last_node = node_manager.global_node_directory[last_node.Parent_Node_hash]
+                actions.append(last_node.Action_to_Node)
+
+                if last_node.Parent_Node_hash == None:
+                    break
+
+            actions.reverse()
+            return actions
+        
+        return None
 
     def back_track(self):
         """Funciton to find the final trajectory given the final goal node
@@ -220,7 +243,7 @@ class astar_planner:
         
         return None
     
-    def visualize_exploration(self, display_environment, robot_radius, render_node_start_index = 0):
+    def visualize_exploration(self, start_state, goal_state, display_environment, robot_radius, render_node_start_index = 0):
         """Visualize exploration of the nodes
         """
         #indicate start and goal nodes with circles5
@@ -286,113 +309,5 @@ class astar_planner:
 
         cv.waitKey(1)
 
-if __name__ == "__main__":
 
-    #Static parameters--------------------------
-    rpm1 = 50
-    rpm2 = 100
-    wheel_radius = 3.3
-    robot_radius = 10.5
-    wheel_base_width = 16.0
-    #-------------------------------------------
-
-    obstacle_inflation = 5
-    # goal_dist_threshold = 1.5 * robot_radius
-    goal_dist_threshold = 30
-
-    #the amount of time the robot moves per action
-    step_size = 1
-
-    start_state = (30, 30, 30)
-    goal_state = (230, 419, 30)
-
-
-    robot_radius = round(robot_radius)
-    if robot_radius < 1:
-        robot_radius = 1
-
-
-    # print("Enter obstacle inflation size : ") 
-    # obstacle_inflation = int(input())
-    # print("Enter robot radius  : ") 
-    # robot_radius = int(input())
-    # goal_dist_threshold = 1.5 * robot_radius
-
-    
-    # print("Note: Enter step  greater than 0.5 * robot radius")
-    # print(f"Enter robot's action step size: [{ceil(0.5 * robot_radius)} - 10]")
-    # step_size = int(input())
-     
-    # while step_size < 1 or step_size > 10: #check if the start node is outside the map
-    #     print("\nAction step size out of range [1-10]. Re-Enter the action Step size: ")
-    #     step_size = int(input())
-
-    #Create environment
-    print("Please wait while creating the environment.")
-    #Crate environment for showing the final visualization--------------------------
-    #This does not show the additional inflation for robot radius. Insted, it will inflate the robot size
-    display_environment = environment(250, 600, obstacle_inflation, step_size, wheel_radius, wheel_base_width)
-    display_environment.create_map()
-    #-------------------------------------------------------------------------------
-
-
-    # clearance_robot_radius = round(robot_radius)
-    # if clearance_robot_radius < 1:
-    #     clearance_robot_radius = 1
-    _environment = environment(250, 600, robot_radius+obstacle_inflation, step_size, wheel_radius, wheel_base_width)
-    _environment.create_map()
-    print("Environment created successfully.")
-
-    #     # #Getting start node from the user:
-    # print("\nEnter Start Node as integers: x,y,theta") 
-    # start_y, start_x, start_theta = input().replace(" ", "").split(',')
-    # start_state = (int(start_x.strip()), int(start_y.strip()), int(start_theta.strip()))
-
-    
-    while(not _environment.is_valid_position(start_state)) or start_state[2] % 30 != 0: #check if the start node is outside the map
-        print("\nStart Node is out of the Map or theta is not a multiple of 30. Re-Enter the Start node: ")
-        start_y, start_x, start_theta = input().replace(" ", "").split(',')
-        start_state = (int(start_x.strip()), int(start_y.strip()), int(start_theta.strip()))
-    
-    
-    # # Getting goal node from the user:
-    # print("Enter Goal Node as integers: x,y,theta")
-    # goal_y, goal_x, goal_theta = input().replace(" ", "").split(',')
-    # goal_state = (int(goal_x.strip()), int(goal_y.strip()), int(goal_theta.strip()))
-
-    while(not _environment.is_valid_position(goal_state)) or goal_state[2] % 30 != 0: #check if the goal node is outside the map
-        print("\nGoal Node is out of the Map or theta is not a multiple of 30 Re-Enter the Goal node: ")
-        goal_y, goal_x,goal_theta = input().replace(" ", "").split(',')
-        goal_state = (int(goal_x.strip()), int(goal_y.strip()), int(goal_theta.strip()))
-
-    
-
-    #Create action handler for the environment
-    _actionHandler = action_handler(_environment, step_size, start_state, goal_state, rpm1, rpm2, wheel_radius, wheel_base_width)
-
-    #create planner
-    _astar_planner = astar_planner(_environment, _actionHandler)
-
-    #Request planner to find a plan
-    print("Planning started.")
-    print(f"Start Position : {[start_state[1], start_state[0]]}, Goal Postion : {[goal_state[1], goal_state[0]]}")
-    print("Please wait while searching for the goal state...")
-    start_time = time.time()
-    _status =  _astar_planner.find_goal_node(start_state, goal_state, robot_radius, goal_dist_threshold, display_environment)
-    elspsed_time = time.time() - start_time
-
-    print(f"Total time taken to run the algorithm : {elspsed_time} seconds\n")
-
-    #If Planner is successfull, visualize the plan
-    if _status:
-        trajectory = _astar_planner.back_track()
-        if trajectory != None:
-            # display_environment.begin_video_writer()
-            _astar_planner.visualize_exploration(display_environment, robot_radius)
-            _astar_planner.visualize_trajectory(trajectory, display_environment, robot_radius)
-            _astar_planner.animate_trajectory(trajectory, display_environment, robot_radius)
-            # display_environment.close_video_writer()
-
-            display_environment.save_image("Solution.png")
-            cv.waitKey(0)
 
