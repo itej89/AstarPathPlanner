@@ -19,7 +19,8 @@
 
 ## User input example
 
-    ![Terminal Output](https://user-images.githubusercontent.com/37236721/230712148-2eed6cdb-9029-4b84-88ca-ca7dc5babd18.png)
+![TerminalOutput](https://user-images.githubusercontent.com/37236721/230712185-76a5fa3c-d39a-4104-9f26-74d2e05eb2b9.png)
+
 
 
 ## Demo Video:
