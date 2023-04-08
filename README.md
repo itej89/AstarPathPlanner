@@ -19,9 +19,9 @@
 
 ## User input example
 
+![alt text][https://github.com/itej89/AstarPathPlanner/blob/a_star_turtle_bot/readme_image/Terminal%20Output.png]
 
-
-   
+    
 
 ## Demo Video:
  - Video shows exploration of nodes and finding the goal node for a circular robot given start node, goal node, robot radius and clerance from obstacles. Once the shortest path is found, it is backtracked and visualized using openCV.
