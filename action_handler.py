@@ -6,7 +6,7 @@ class action_handler:
 #Class to handle the action supported by the environment
 
 
-    def __init__(self, env, step_size, start_pose, goal_pose, rpm1, rpm2, wheel_radius, wheel_base_width) -> None:
+    def __init__(self, env, step_size, start_pose, goal_pose, omega1, omega2, wheel_radius, wheel_base_width) -> None:
         """Initilaize action handler parameters
         Args:
             env (environment): referance ot environment
@@ -19,7 +19,8 @@ class action_handler:
         self.wheel_base_width = wheel_base_width
 
         #define al the actions possible in the environment
-        self.Actions = [(0, rpm1), (rpm1,0), (rpm1, rpm1), (0, rpm2), (rpm2, 0), (rpm2,rpm2), (rpm1, rpm2), (rpm2, rpm1)]
+        self.Actions = [(0, omega1), (omega1,0), (omega1, omega1), (0, omega2), (omega2, 0), (omega2,omega2), (omega1, omega2), (omega2, omega1)]
+        print(f"ACTION SET : {self.Actions}")
 
 
     def cost_norm(self, pose1, pose2):

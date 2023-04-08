@@ -216,13 +216,15 @@ class astar_planner:
             #back track untill the start node has been reached
             while True:
                 last_node = node_manager.global_node_directory[last_node.Parent_Node_hash]
-                if last_node.Action_to_Node != None:
-                    ul.append(last_node.Action_to_Node[0])
-                    ur.append(last_node.Action_to_Node[1])
-                    theta.append(last_node.Node_State[2])
 
                 if last_node.Parent_Node_hash == None:
                     break
+
+                if last_node.Action_to_Node != None:
+                    ul.append(last_node.Action_to_Node[0])
+                    ur.append(last_node.Action_to_Node[1])
+                    theta.append(node_manager.global_node_directory[last_node.Parent_Node_hash].Node_State[2])
+
 
             ul.reverse(); ur.reverse(); theta.reverse()
             return ul, ur, theta
@@ -289,6 +291,24 @@ class astar_planner:
         Args:
             trajectory (lsit of tuples): trajectory
         """
+        update_count = 0
+        # Loop through all visited nodes and show on the cv window
+        for node in self.pending_state_que:
+
+            if node.Parent_Node_hash != None:
+                parent_idx = node.Parent_Node_hash
+                pose = (node_manager.node_x[parent_idx], node_manager.node_y[parent_idx], \
+                        node_manager.node_theta[parent_idx])
+                display_environment.update_action(pose, \
+                                        node.Action_to_Node, self.env.is_valid_position)
+                
+                update_count +=1
+                #Update gui every 300 iteration
+                if update_count == 500:
+                    update_count = 0
+                    cv.waitKey(1)
+
+
         #Loop through all points in the trajectory
         for point in trajectory:
             display_environment.highlight_point(point)
